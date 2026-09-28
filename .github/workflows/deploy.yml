@@ -13,6 +13,7 @@ jobs:
       # 1. Checkout source code
       - name: Checkout Code
         uses: actions/checkout@v4
+
       
 
       # 3. Build Docker Image (Nếu lỗi code/build fail, step này sẽ báo lỗi)
@@ -29,35 +30,3 @@ jobs:
           docker rm react-app-container || true
           docker run -d --name react-app-container --restart always -p 3838:80 react-app:latest
           docker image prune -f
-
-      # 5. Thông báo khi DEPLOY THÀNH CÔNG
-      - name: Notify Success to Telegram
-        if: success()
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_TO }}
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          message: |
-            ✅ DEPLOY THÀNH CÔNG!
-            -------------------------------
-            📦 Repo: ${{ github.repository }}
-            🔀 Branch: ${{ github.ref_name }}
-            👤 Author: ${{ github.actor }}
-            📝 Commit: ${{ github.event.head_commit.message }}
-            🌐 Web URL: http://192.168.85.128:3838
-
-      # 6. Bắt lỗi & Thông báo khi TEST / BUILD / DEPLOY THẤT BẠI
-      - name: Notify Failure to Telegram
-        if: failure()
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_TO }}
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          message: |
-            ❌ DEPLOY THẤT BẠI (BUILD/TEST ERROR)!
-            -------------------------------
-            📦 Repo: ${{ github.repository }}
-            🔀 Branch: ${{ github.ref_name }}
-            👤 Author: ${{ github.actor }}
-            📝 Commit: ${{ github.event.head_commit.message }}
-            ⚠️ Vui lòng kiểm tra log trên GitHub Actions để fix lỗi.
