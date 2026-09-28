@@ -1,4 +1,4 @@
-name: Deploy ReactJS App to Local VM Server
+name: CI/CD Pipeline & Notification
 
 on:
   push:
@@ -6,26 +6,64 @@ on:
       - main
 
 jobs:
-  deploy:
+  test-and-deploy:
     runs-on: self-hosted
 
     steps:
-      # 1. GitHub Runner tự clone code mới nhất từ GitHub về
+      # 1. Checkout source code
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Build & Run Docker trực tiếp từ thư mục code vừa clone
-      - name: Build and Run Docker Container
+      # 2. Chạy Unit Test (Nếu test fail, step này ngắt ngay pipeline)
+      - name: Run Unit Tests
         run: |
-          # Build Docker Image trực tiếp từ workspace
+          echo "=== Running Unit Tests ==="
+          npm install
+          npm test -- --watchAll=false
+
+      # 3. Build Docker Image (Nếu lỗi code/build fail, step này sẽ báo lỗi)
+      - name: Build Docker Image
+        run: |
+          echo "=== Building Docker Image ==="
           docker build -t react-app:latest .
 
-          # Stop và xóa Container cũ (nếu có)
+      # 4. Deploy (Chỉ chạy khi Test và Build Docker thành công)
+      - name: Deploy Container
+        run: |
+          echo "=== Deploying to Server ==="
           docker stop react-app-container || true
           docker rm react-app-container || true
-
-          # Chạy Container mới trên port 3838
           docker run -d --name react-app-container --restart always -p 3838:80 react-app:latest
-
-          # Dọn dẹp image rác
           docker image prune -f
+
+      # 5. Thông báo khi DEPLOY THÀNH CÔNG
+      - name: Notify Success to Telegram
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ✅ DEPLOY THÀNH CÔNG!
+            -------------------------------
+            📦 Repo: ${{ github.repository }}
+            🔀 Branch: ${{ github.ref_name }}
+            👤 Author: ${{ github.actor }}
+            📝 Commit: ${{ github.event.head_commit.message }}
+            🌐 Web URL: http://192.168.85.128:3838
+
+      # 6. Bắt lỗi & Thông báo khi TEST / BUILD / DEPLOY THẤT BẠI
+      - name: Notify Failure to Telegram
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ❌ DEPLOY THẤT BẠI (BUILD/TEST ERROR)!
+            -------------------------------
+            📦 Repo: ${{ github.repository }}
+            🔀 Branch: ${{ github.ref_name }}
+            👤 Author: ${{ github.actor }}
+            📝 Commit: ${{ github.event.head_commit.message }}
+            ⚠️ Vui lòng kiểm tra log trên GitHub Actions để fix lỗi.
