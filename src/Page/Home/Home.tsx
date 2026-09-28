@@ -24,7 +24,7 @@ export default function Home() {
   }
 
   return (
-    <div className="container mx-auto px-16 py-32">
+    <div className="layout mx-auto px-16 py-32">
       {categories?.map((category) => (
         <div key={category.tieude} className="mb-24">
           <h2 className="text-2xl font-bold uppercase tracking-wider text-gray-800 mb-24 pb-8 border-b-2 border-gray-200">

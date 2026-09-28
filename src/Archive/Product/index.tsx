@@ -39,7 +39,7 @@ const ArchiveProduct: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-16 py-32">
+    <div className="layout mx-auto px-16 py-32">
       <ProductHeader />
 
       <div className="flex gap-24">
