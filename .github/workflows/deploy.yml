@@ -7,39 +7,25 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
+      # 1. GitHub Runner tự clone code mới nhất từ GitHub về
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Deploy to Server via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          script: |
-            # 1. Di chuyển vào thư mục ứng dụng
-            cd /var/www/react-app
+      # 2. Build & Run Docker trực tiếp từ thư mục code vừa clone
+      - name: Build and Run Docker Container
+        run: |
+          # Build Docker Image trực tiếp từ workspace
+          docker build -t react-app:latest .
 
-            # 2. Clone repo nếu chưa có, hoặc pull code mới nhất
-            if [ ! -d ".git" ]; then
-              git clone https://github.com/vckhang/reactjs_banhang.git .
-            else
-              git pull origin main
-            fi
+          # Stop và xóa Container cũ (nếu có)
+          docker stop react-app-container || true
+          docker rm react-app-container || true
 
-            # 3. Build Docker Image mới
-            docker build -t react-app:latest .
+          # Chạy Container mới trên port 3838
+          docker run -d --name react-app-container --restart always -p 3838:80 react-app:latest
 
-            # 4. Stop và xóa Container cũ (nếu có)
-            docker stop react-app-container || true
-            docker rm react-app-container || true
-
-            # 5. Chạy Container mới trên port 80
-            docker run -d --name react-app-container --restart always -p 3838:80 react-app:latest
-
-            # 6. Dọn dẹp image rác
-            docker image prune -f
+          # Dọn dẹp image rác
+          docker image prune -f
