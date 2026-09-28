@@ -1,0 +1,45 @@
+name: Deploy ReactJS App to Local VM Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            # 1. Di chuyển vào thư mục ứng dụng
+            cd /var/www/react-app
+
+            # 2. Clone repo nếu chưa có, hoặc pull code mới nhất
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/vckhang/reactjs_banhang.git .
+            else
+              git pull origin main
+            fi
+
+            # 3. Build Docker Image mới
+            docker build -t react-app:latest .
+
+            # 4. Stop và xóa Container cũ (nếu có)
+            docker stop react-app-container || true
+            docker rm react-app-container || true
+
+            # 5. Chạy Container mới trên port 80
+            docker run -d --name react-app-container --restart always -p 3838:80 react-app:latest
+
+            # 6. Dọn dẹp image rác
+            docker image prune -f
